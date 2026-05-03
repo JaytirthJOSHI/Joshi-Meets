@@ -1,91 +1,122 @@
-# Plug-N-Meet - A Scalable, Customizable, Open-Source Web Conferencing System
+# Joshi Meets
 
-Plug-N-Meet is a powerful, open-source web conferencing solution built on the high-performance WebRTC infrastructure of [LiveKit](https://github.com/livekit/livekit-server). Designed for scalability and easy customization, Plug-N-Meet allows you to seamlessly integrate a feature-rich, self-hosted, and AI-powered video conferencing experience into any existing website, application, or system.
+**Joshi Meets** is the video collaboration stack for **[joshi1.com](https://joshi1.com)** — a scalable, self-hosted meeting experience built on [LiveKit](https://livekit.io/) and the [plugNmeet](https://www.plugnmeet.org/) open-source conferencing server.
 
-Have questions or ideas? [Join our developer community on Discord](https://discord.gg/2X2ZaCHu4C) to connect with the team and discuss your suggestions.
+This repository contains the **API server** (Go). The web UI comes from [plugNmeet-client](https://github.com/mynaparrot/plugNmeet-client) (React); recordings are handled by [plugNmeet-recorder](https://github.com/mynaparrot/plugNmeet-recorder). We retain upstream module paths so you can merge security fixes from [mynaparrot/plugNmeet-server](https://github.com/mynaparrot/plugNmeet-server) without a painful import rewrite.
 
-banner
+![Joshi Meets banner](./github_files/banner.svg)
 
-## Key Features
+## Why Joshi Meets
 
-- **High-Performance & Scalable**: Built with Go and leveraging the power of LiveKit, ensuring a robust and lightweight system.
-- **Adaptive Streaming**: **Simulcast** and **Dynacast** support ensures stable calls even on poor networks by intelligently managing video quality and bandwidth. Supported codecs include `H264`, `VP8`, `VP9`, and `AV1`.
-- **Rich Collaboration Tools**: Engage users with HD audio/video, screen sharing, virtual backgrounds, a collaborative whiteboard with office file support (PDF, DOCX, PPTX), shared notepad, polls, and breakout rooms.
-- **Secure & Private Communication**: Features WebRTC-based encryption by default, with optional **End-to-End Encryption (E2EE)** for all media and data channels, ensuring conversations remain confidential.
-- **AI-Powered Meeting Intelligence**: Turn meetings into actionable intelligence. The AI agent provides live spoken translations, real-time transcription, and automated summaries with action items, all accessible via the Artifacts API.
-- **Telephone Dial-In (SIP Gateway):** Allow participants to join the audio of your meeting by dialing a standard phone number—no internet required.
-- **Flexible Integration**: Easily integrate with any website or system using our straightforward API and SDKs for PHP and JavaScript. Ready-to-use plugins are available for **WordPress**, **Moodle**, and **Joomla**.
-- **Deep Customization**: Easily customize the UI, features, branding, and URLs to match your application's look and feel without modifying core code.
-- **Advanced Broadcasting & Recording**: Includes reliable MP4 recording, RTMP/RTMPS broadcasting to services like YouTube, and RTMP/WHIP ingress for professional production tools like OBS.
-- **Cross-Device Compatibility**: Works on all modern browsers, including Chrome, Firefox, and Safari for iOS, with no downloads required.
+- **HD video & screen share** with simulcast / dynacast for rough networks  
+- **Whiteboard, polls, breakout rooms, shared notepad**  
+- **Optional AI**: live translation, transcription, summaries (configure in `config.yaml`)  
+- **SIP dial-in**, RTMP ingress, MP4 recording — same capabilities as upstream plugNmeet  
+- **Your domain**: run everything behind `joshi1.com` with your TLS and branding  
 
-And many more!
+## Quick architecture for joshi1.com
 
-## Core Components
+| Layer | Suggested host | Notes |
+|--------|-----------------|--------|
+| Web + API | `https://meet.joshi1.com` (or `https://joshi1.com/meet`) | This server + static client `client/dist` or CDN |
+| LiveKit | `wss://livekit.joshi1.com` | UDP `7882` / TCP `7880` must reach your edge |
+| NATS (browser) | `wss://nats.joshi1.com` | Must match `nats_ws_urls` in config |
+| TURN | LiveKit default or Cloudflare / coturn | See `config_sample.yaml` |
 
-1. **plugNmeet-server**: The primary backend server written in **Go**, handling all API and business logic.
-2. **[plugNmeet-client](https://github.com/mynaparrot/plugNmeet-client)**: The main frontend interface built with **React** and **Redux**.
-3. **[plugNmeet-recorder](https://github.com/mynaparrot/plugNmeet-recorder)**: A dedicated Go application for managing MP4 recordings and RTMP broadcasting.
+Point your **plugNmeet client** build at your public API URL so tokens and room joins hit this server.
 
-#### Demo
+## Deploy to production (checklist)
 
-[https://demo.plugnmeet.com/landing.html](https://demo.plugnmeet.com/landing.html)
+These steps assume a single VPS or small cluster (Docker Compose or Kubernetes). Adapt names if you use a subdomain layout other than below.
 
-## Installation
+### 1. DNS
 
-We've created a simple installation script to deploy all necessary components in minutes.
+Create records (example):
 
-**View the Complete Installation Guide:** [https://www.plugnmeet.org/docs/installation](https://www.plugnmeet.org/docs/installation)
+- `meet.joshi1.com` → your reverse proxy (API + static UI)  
+- `livekit.joshi1.com` → same host or dedicated media node  
+- `nats.joshi1.com` → WebSocket endpoint for NATS (often same edge as API)  
 
-## SDKs & Tools
+### 2. Copy and edit config
 
-### Official SDKs
-
-- **[PHP](https://github.com/mynaparrot/plugNmeet-sdk-php)**
-- **[JavaScript](https://github.com/mynaparrot/plugNmeet-sdk-js)** (for NodeJS and [Deno](https://github.com/mynaparrot/plugNmeet-sdk-js/tree/main/deno_dist))
-
-### Ready-to-Use Plugins & Integrations
-
-- **[Joomla** Component](https://github.com/mynaparrot/plugNmeet-joomla)
-- **[Moodle** Plugin](https://github.com/mynaparrot/moodle-mod_plugnmeet)
-- **[WordPress** Plugin](https://github.com/mynaparrot/plugNmeet-wordpress)
-- **[LTI](https://www.plugnmeet.org/docs/user-guide/lti)** for any compatible LMS
-
-### Docker Images
-
-- [plugnmeet-server](https://hub.docker.com/r/mynaparrot/plugnmeet-server)
-- [plugnmeet-etherpad](https://hub.docker.com/r/mynaparrot/plugnmeet-etherpad)
-- [plugnmeet-recorder](https://hub.docker.com/r/mynaparrot/plugnmeet-recorder)
-
-Full server API documentation is available in the [API Docs](https://www.plugnmeet.org/docs/api/intro).
-
-## Manual installation
-
-**Requirements:**
-
-1. A properly configured **LiveKit** instance.
-2. **Redis** for caching and messaging.
-3. **MariaDB** or **MySQL** for data storage.
-4. (Optional) `libreoffice` & `mupdf-tools` for office file support in the whiteboard.
-
-Create a `config.yaml` from the `config_sample.yaml` and modify it with your environment details.
-
-***Using docker***
-
-```
-docker run --rm -p 8080:8080 \
-    -v $PWD/config.yaml:/config.yaml \
-    mynaparrot/plugnmeet-server \
-    --config /config.yaml \
+```bash
+cp config_sample.yaml config.yaml
 ```
 
-You can also follow [docker-compose_sample.yaml](https://raw.githubusercontent.com/mynaparrot/plugNmeet-server/main/docker-compose_sample.yaml) file.
+**Must set for joshi1.com:**
 
-## Development
+- `client.api_key` / `client.secret` — strong random values (`openssl rand -hex 32`)  
+- `client.copyright_conf.text` — already oriented to Joshi Meets; tweak as you like  
+- `client.bbb_join_host` — public origin users use to open the app, e.g. `https://meet.joshi1.com`  
+- `livekit_info.host` — e.g. `https://livekit.joshi1.com` with matching API key/secret from LiveKit  
+- `nats_info.nats_urls` — reachable from this server (`nats://...`)  
+- `nats_info.nats_ws_urls` — **browser-visible** WebSocket URL(s), e.g. `https://nats.joshi1.com`  
+- `redis_info`, `database_info` — your Redis and MySQL/MariaDB  
 
-Please follow [this article](https://www.plugnmeet.org/docs/developer-guide/setup-development) for details.
+Keep the database name aligned with `sql_dump/install.sql` (default `plugnmeet`) unless you change the dump and `database_info.db` together.
+
+### 3. TLS termination
+
+Use **Caddy** or **nginx** (or a cloud load balancer) with valid certificates:
+
+- Terminate HTTPS on `meet.joshi1.com` and proxy to this service on port `8080` (or your `client.port`).  
+- WebSocket upgrades must be enabled for NATS and LiveKit paths your deployment exposes.  
+
+### 4. Client assets
+
+Either:
+
+- Build [plugNmeet-client](https://github.com/mynaparrot/plugNmeet-client) with your API base URL and place output in `client/dist`, **or**  
+- Set `client.asset_host` in `config.yaml` if you ship JS/CSS from a CDN.  
+
+For a **full visual rebrand** (logo, colors, copy), fork or theme the client repo; this server only controls footer copyright text and server-driven settings.
+
+### 5. Run with Docker
+
+See [docker-compose_sample.yaml](./docker-compose_sample.yaml) for a full stack (Redis, MariaDB, NATS, LiveKit, Etherpad, API). For production, replace dev bind-mounts with release images and secrets via env or mounted `config.yaml`.
+
+Official images (usable while you publish your own):
+
+- `mynaparrot/plugnmeet-server`  
+- `mynaparrot/plugnmeet-etherpad`  
+- `mynaparrot/plugnmeet-recorder`  
+
+### Small VPS (~1 GB RAM)
+
+For **small rooms only**, use the trimmed stack (no Etherpad, no SIP, no RTMP ingress):
+
+1. On the server: `git clone https://github.com/JaytirthJOSHI/Joshi-Meets.git && cd Joshi-Meets`  
+2. Run `./scripts/install-small-vps.sh`  
+3. Copy [env.small.example](./env.small.example) to `.env` and set `MYSQL_ROOT_PASSWORD`. The default `JOSHI_MEETS_IMAGE` points at **GitHub Container Registry** for this repo (`ghcr.io/jaytirthjoshi/joshi-meets:dev`).  
+4. After the first successful **Actions** run on `main`, open **GitHub → Packages** → the `joshi-meets` container → **Package settings** → **Change package visibility** → **Public** so your VPS can `docker pull` without a login.  
+5. Edit `config.yaml`: keep Redis/DB/NATS/LiveKit pointed at compose service names; set `shared_notepad.enabled: false` (Etherpad is not in the small compose).  
+6. Add **swap** (about 2 GB) if the host has little free RAM.  
+7. Start: `docker compose -f docker-compose.small.yaml --env-file .env up -d`  
+
+Put a production build of [plugNmeet-client](https://github.com/mynaparrot/plugNmeet-client) in `client/dist/`. Terminate TLS on the host (Caddy/nginx) and proxy to `127.0.0.1:8080`.
+
+**Updates (no GitHub secrets, no auto-SSH):** on the VPS run `./scripts/deploy-pull.sh` — it `git pull`s this repo, pulls the latest API image from GHCR, and runs `docker compose up -d`.
+
+### 6. CI and container image
+
+- **CI** ([.github/workflows/ci.yml](.github/workflows/ci.yml)): on PRs and `main` — `go mod verify` and a Docker **build** (no registry push).  
+- **GHCR** ([.github/workflows/release-ghcr-dev.yml](.github/workflows/release-ghcr-dev.yml)): on every push to `main`, builds and pushes **`ghcr.io/jaytirthjoshi/joshi-meets:dev`** and **`:latest`** using **`GITHUB_TOKEN` only** — you do **not** add Docker Hub or deploy secrets.  
+- **Releases** ([.github/workflows/release-please.yml](.github/workflows/release-please.yml)): semver releases also push images to the same GHCR repository (when a release is created).
+
+## Local development
+
+Follow the upstream guide: [plugNmeet developer setup](https://www.plugnmeet.org/docs/developer-guide/setup-development). This repo’s `go.mod` intentionally stays compatible with `github.com/mynaparrot/plugNmeet-server` imports.
+
+## Upstream documentation
+
+- Installation: [plugnmeet.org/docs/installation](https://www.plugnmeet.org/docs/installation)  
+- API: [plugnmeet.org/docs/api/intro](https://www.plugnmeet.org/docs/api/intro)  
+- SDKs: [PHP](https://github.com/mynaparrot/plugNmeet-sdk-php), [JavaScript](https://github.com/mynaparrot/plugNmeet-sdk-js)  
 
 ## Contributing
 
-We welcome your suggestions for improving plugNmeet!
-Let's chat [on Discord](https://discord.gg/2X2ZaCHu4C) to discuss your suggestions and/or PRs. 
+Issues and PRs welcome for **Joshi Meets–specific** branding, docs, and deployment polish. Core protocol changes should ideally go upstream to [mynaparrot/plugNmeet-server](https://github.com/mynaparrot/plugNmeet-server) when applicable.
+
+## License
+
+See [LICENSE](./LICENSE) (inherits upstream licensing).

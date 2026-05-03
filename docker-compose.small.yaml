@@ -1,0 +1,77 @@
+# Joshi Meets — minimal stack for a tiny VPS (~1 GB RAM, small rooms only).
+# Omits: Etherpad, LiveKit Ingress, LiveKit SIP (add later if you need them).
+#
+# On the server (first time):
+#   1. git clone https://github.com/JaytirthJOSHI/Joshi-Meets.git && cd Joshi-Meets
+#   2. ./scripts/install-small-vps.sh
+#   3. Edit .env, config.yaml, livekit.yaml (keys), nats_server.conf (match config_sample NATS keys)
+#   4. docker compose -f docker-compose.small.yaml --env-file .env up -d
+#
+# API image: GitHub Actions pushes to GHCR (no Docker Hub secrets). Default in env.small.example.
+# On the VPS after updates: ./scripts/deploy-pull.sh  (git pull + compose pull + up -d)
+
+services:
+  redis:
+    image: redis:8.6-alpine
+    restart: unless-stopped
+    command: redis-server --save "" --appendonly no --maxmemory 64mb --maxmemory-policy allkeys-lru
+    ports:
+      - "127.0.0.1:6379:6379/tcp"
+
+  db:
+    image: mariadb:12.2
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+    command:
+      - --innodb-buffer-pool-size=128M
+      - --max-connections=80
+      - --performance-schema=OFF
+    volumes:
+      - ./mariadb-data:/var/lib/mysql
+      - ./sql_dump/install.sql:/docker-entrypoint-initdb.d/install.sql
+
+  nats:
+    image: nats:2.12-alpine
+    restart: unless-stopped
+    command:
+      - "-config"
+      - "/nats-server.conf"
+    ports:
+      - "4222:4222/tcp"
+      - "8222:8222/tcp"
+    volumes:
+      - ./nats_server.conf:/nats-server.conf:ro
+      - ./etc/tmp/nats-data:/data/jetstream
+
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    ports:
+      - "7880:7880/tcp"
+      - "7881:7881/tcp"
+      - "7882:7882/udp"
+    volumes:
+      - ./livekit.yaml:/app/livekit.yaml:ro
+    command: --config /app/livekit.yaml
+    depends_on:
+      - redis
+
+  joshi-meets-api:
+    image: ${JOSHI_MEETS_IMAGE:?set JOSHI_MEETS_IMAGE in .env}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080/tcp"
+    volumes:
+      - ./config.yaml:/config.yaml:ro
+      - ./client/dist:/app/client/dist:ro
+      - ./upload:/app/upload
+      - ./recording_files:/app/recording_files
+      - ./artifacts:/app/artifacts
+      - ./log:/app/log
+    command: ["plugnmeet-server", "--config", "/config.yaml"]
+    depends_on:
+      - nats
+      - redis
+      - db
+      - livekit
