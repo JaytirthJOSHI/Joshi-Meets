@@ -36,7 +36,7 @@ fi
 
 echo ""
 echo "Next steps:"
-echo "  1. Edit .env (MYSQL_ROOT_PASSWORD, JOSHI_MEETS_IMAGE)"
+echo "  1. Edit .env (MYSQL_ROOT_PASSWORD). In GitHub: set GHCR package to Public for anonymous pull."
 echo "  2. Edit config.yaml — for 1GB VPS set shared_notepad.enabled: false (no Etherpad in small compose)"
 echo "  3. Align livekit.yaml keys with config.yaml livekit_info"
 echo "  4. Align nats_server.conf with config.yaml nats_info"
