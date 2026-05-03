@@ -12,7 +12,7 @@ const DurableNameTpl = "%s_%s"
 func (s *NatsService) createRoomNatsStream() {
 	_, err := s.js.CreateOrUpdateStream(s.ctx, jetstream.StreamConfig{
 		Name:        s.app.NatsInfo.RoomStreamName,
-		Description: "plugNmeet room stream",
+		Description: "Joshi Meets room stream",
 		Replicas:    s.app.NatsInfo.NumReplicas,
 		Retention:   jetstream.InterestPolicy,
 		Subjects: []string{
