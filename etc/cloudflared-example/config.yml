@@ -1,21 +1,32 @@
-# Example for Cloudflare Tunnel (cloudflared) on the same host as docker-compose.small.yaml.
+# Single public hostname: only https://meet.yourdomain.com (no nats.* subdomain).
 #
+# Prerequisites:
+# - In nats_server.conf, set a WebSocket path so NATS matches the tunnel path, e.g.:
+#     websocket {
+#       port: 8222
+#       no_tls: true
+#       path: "/nws"
+#     }
+# - In config.yaml: nats_info.nats_ws_urls → ["https://meet.yourdomain.com/nws"]
+# - client.bbb_join_host → "https://meet.yourdomain.com"
+#
+# LiveKit WebRTC still needs UDP to your VPS public IP (grey-cloud DNS or open ports).
+# livekit_info.host can stay https://livekit.yourdomain.com (users never open it — only meet.* is shared).
+#
+# Setup:
 # 1. cloudflared tunnel create joshi-meets
 # 2. cloudflared tunnel route dns joshi-meets meet.joshi1.com
-# 3. cloudflared tunnel route dns joshi-meets nats.joshi1.com
-# 4. Copy this file to /etc/cloudflared/config.yml (or ~/.cloudflared/) and set:
-#    - tunnel: <uuid from tunnel create>
-#    - credentials-file: path to <uuid>.json
-# 5. Do NOT put LiveKit behind orange-cloud — see README "Cloudflare Tunnel".
+# 3. Fill tunnel + credentials-file below; install service: cloudflared service install
 #
 tunnel: REPLACE_WITH_TUNNEL_UUID
 credentials-file: /etc/cloudflared/REPLACE_WITH_TUNNEL_UUID.json
 
 ingress:
-  # Joshi Meets API + static client (docker maps 8080 to 127.0.0.1)
+  # NATS browser WebSocket — must be before the catch-all rule
+  - hostname: meet.joshi1.com
+    path: /nws*
+    service: http://127.0.0.1:8222
+  # Joshi Meets API + static client
   - hostname: meet.joshi1.com
     service: http://127.0.0.1:8080
-  # NATS WebSocket (browser clients)
-  - hostname: nats.joshi1.com
-    service: http://127.0.0.1:8222
   - service: http_status:404

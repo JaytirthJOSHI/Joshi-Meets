@@ -62,27 +62,24 @@ Use **Caddy** or **nginx** (or a cloud load balancer) with valid certificates:
 - Terminate HTTPS on `meet.joshi1.com` and proxy to this service on port `8080` (or your `client.port`).  
 - WebSocket upgrades must be enabled for NATS and LiveKit paths your deployment exposes.  
 
-### Cloudflare Tunnel (meet + NATS) and LiveKit (direct to VPS)
+### Cloudflare Tunnel — one URL: `https://meet.<yourdomain>`
 
-**Cloudflare Tunnel** (`cloudflared`) is a good fit for **HTTPS + WebSocket** to:
+You only need **one hostname** in DNS for people to use: **`meet.<yourdomain>`** (everything else can be technical / grey-cloud).
 
-- **`meet.<yourdomain>`** → `http://127.0.0.1:8080` (Joshi Meets API + `client/dist`)
-- **`nats.<yourdomain>`** → `http://127.0.0.1:8222` (NATS browser WebSocket)
+**Tunnel** (`cloudflared`) routes:
 
-Example ingress file: [etc/cloudflared-example/config.yml](./etc/cloudflared-example/config.yml). Create the tunnel in [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) → Networks → Tunnels, map the hostnames, install `cloudflared` on the VPS, and run `cloudflared tunnel run`.
+- **`https://meet.<yourdomain>/`** → Joshi Meets API + static UI → `http://127.0.0.1:8080`
+- **`https://meet.<yourdomain>/nws…`** → NATS WebSocket → `http://127.0.0.1:8222`
 
-**LiveKit cannot sit behind the orange-cloud proxy** for real calls: WebRTC needs **UDP** (and direct media paths). Typical pattern:
+Example ingress: [etc/cloudflared-example/config.yml](./etc/cloudflared-example/config.yml). In **`nats_server.conf`**, under `websocket { }`, add **`path: "/nws"`** (and keep `port: 8222`). In **`config.yaml`** set:
 
-1. Add a **DNS-only** (**grey cloud**) **`A`** record: `livekit.<yourdomain>` → **`129.213.163.191`** (your VPS public IP).  
-2. In the cloud firewall / security list, allow **TCP `7880`–`7881`** and **UDP `7882`** (and any ports you use for LiveKit) to that IP.  
-3. Terminate **TLS** for `livekit.<yourdomain>` on the **VPS** (e.g. **Caddy** or nginx on `443` → `http://127.0.0.1:7880`), or enable TLS inside `livekit.yaml` per [LiveKit docs](https://docs.livekit.io/).  
-4. In `config.yaml` set:
-   - `client.bbb_join_host` → `https://meet.<yourdomain>`  
-   - `nats_info.nats_ws_urls` → `https://nats.<yourdomain>` (matches tunnel)  
-   - `livekit_info.host` → `https://livekit.<yourdomain>` (matches grey-cloud + TLS on origin)  
-   - `nats_info.nats_urls` stays `nats://nats:4222` inside Docker; `livekit_info` keys must match `livekit.yaml`.
+- `client.bbb_join_host` → `https://meet.<yourdomain>`  
+- `nats_info.nats_ws_urls` → `https://meet.<yourdomain>/nws`  
+- `nats_info.nats_urls` → `nats://nats:4222` (unchanged inside Docker)
 
-**Summary:** Tunnel = **meet** + **nats**. **LiveKit** = public IP + open media ports + TLS on the machine (not proxied through Cloudflare HTTP).
+Create the tunnel in [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) → Networks → Tunnels, route **only** `meet.<yourdomain>`, install `cloudflared` on the VPS.
+
+**LiveKit** still cannot use orange-cloud for **UDP** media. Keep a **DNS-only** **`A`** record (e.g. `livekit.<yourdomain>` → **`129.213.163.191`**) with **TCP 7880–7881** and **UDP 7882** open to that IP, plus TLS on the VPS for `livekit.<yourdomain>`. Put that URL in `livekit_info.host`. Users never need to open it — they only bookmark **`meet.<yourdomain>`**.
 
 ### 4. Client assets
 
