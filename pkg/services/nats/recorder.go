@@ -10,7 +10,7 @@ func (s *NatsService) createRecorderKVAndWatch() {
 	bucket := s.app.NatsInfo.Recorder.RecorderInfoKv
 	kv, err := s.js.CreateOrUpdateKeyValue(s.ctx, jetstream.KeyValueConfig{
 		Bucket:      bucket,
-		Description: "plugNmeet recorder info",
+		Description: "Joshi Meets recorder info",
 		Replicas:    s.app.NatsInfo.NumReplicas,
 	})
 	if err != nil {

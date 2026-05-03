@@ -42,7 +42,7 @@ keys:
 webhook:
   api_key: APIiYAA5w37Cfo2
   urls:
-    - "http://plugnmeet-api:8080/webhook"
+    - "http://joshi-meets-api:8080/webhook"
     #- "http://host.docker.internal:8080/webhook"
 ingress:
   rtmp_base_url: rtmp://localhost/live

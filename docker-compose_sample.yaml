@@ -1,3 +1,5 @@
+# Joshi Meets — reference stack for joshi1.com (plugNmeet-compatible services).
+# Replace hostnames and secrets before production; see README.md.
 services:
   redis:
     image: redis:8.6
@@ -70,7 +72,7 @@ services:
 #      - /var/cache/fontconfig/:/var/cache/fontconfig/:ro
     depends_on:
       - redis
-  plugnmeet-api:
+  joshi-meets-api:
     build:
       context: .
       dockerfile: docker-build/Dockerfile.dev

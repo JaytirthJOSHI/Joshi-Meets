@@ -6,7 +6,7 @@ client:
   # Openssl rand -hex 32
   # OR
   # cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 36 | head -n 1
-  api_key: "plugnmeet"
+  api_key: "joshi-meets"
   secret: "zumyyYWqv7KR2kUqvYdq4z4sXg7XTBD2ljT6"
   # Value in minutes. Default 10 minutes. Client will renew token automatically
   token_validity: 10m
@@ -31,7 +31,7 @@ client:
     display: true
     # do not make the text longer, not all html tags are supported
     # 'b', 'i', 'em', 'strong', 'a'
-    text: 'Powered by <a href="https://www.plugnmeet.org" target="_blank">plugNmeet</a>'
+    text: 'Joshi Meets · <a href="https://joshi1.com" target="_blank" rel="noopener">joshi1.com</a>'
 room_default_settings:
   max_duration: 0 # Duration in minutes. 0 = no limit
   max_participants: 0 # 0 = no limit
@@ -39,7 +39,7 @@ room_default_settings:
   # default will be 6 & max 16
   max_num_breakout_rooms: 6
 log_settings:
-  log_file: "./log/plugNmeet.log"
+  log_file: "./log/joshi-meets.log"
   # maxsize of log file in MB
   maxsize: 20
   maxbackups: 4
@@ -92,7 +92,7 @@ nats_info:
     system_private: "sysPrivate"
     chat: "chat"
     whiteboard: "whiteboard"
-    # Used for data exchange between plugNmeet clients.
+    # Used for data exchange between meeting clients.
     data_channel: "dataChannel"
   recorder:
     recorder_channel: "recorderChannel"
@@ -143,8 +143,6 @@ azure_cognitive_services_speech:
       max_connection: 20
 analytics_settings:
   enabled: true
-  # if you've multiple plugNmeet servers then make sure that
-  # all plugNmeet servers can access this directory
-  # otherwise it may fail to fetch file. This path can be NSF or other network path
+  # If you run multiple API servers, use a shared path (NFS, etc.) so analytics files are visible everywhere.
   files_store_path: ./analytics
   token_validity: 30m
