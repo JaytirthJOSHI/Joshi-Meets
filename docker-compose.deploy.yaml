@@ -1,0 +1,28 @@
+# Example: production API service using the image built by GitHub Actions (Docker Hub).
+# Copy this snippet into your server compose file, or merge with docker-compose_sample.yaml
+# by replacing the `build:` block for joshi-meets-api with `image:` below.
+#
+# On the server, set in .env next to compose:
+#   JOSHI_MEETS_IMAGE=yourdockerhub/joshi-meets-server:dev
+#
+# CI/CD expects the service name: joshi-meets-api (see .github/workflows/deploy.yml).
+
+services:
+  joshi-meets-api:
+    image: ${JOSHI_MEETS_IMAGE:-yourdockerhub/joshi-meets-server:dev}
+    restart: unless-stopped
+    ports:
+      - "8080:8080/tcp"
+    volumes:
+      - ./config.yaml:/config.yaml:ro
+      - ./client/dist:/app/client/dist:ro
+      - ./upload:/app/upload
+      - ./recording_files:/app/recording_files
+      - ./artifacts:/app/artifacts
+    command: ["plugnmeet-server", "--config", "/config.yaml"]
+    depends_on:
+      - redis
+      - db
+      - nats
+      - livekit
+    # Note: define redis, db, nats, livekit (and etherpad if needed) in the same compose file or an included override.

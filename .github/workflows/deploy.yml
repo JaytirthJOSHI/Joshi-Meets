@@ -1,0 +1,73 @@
+# Deploy the API container to your VPS over SSH after a successful Docker Hub push,
+# or run manually (Actions → Deploy to server → Run workflow).
+#
+# Setup (repository Settings):
+#   Secrets:  DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY  (private key; optional DEPLOY_SSH_PORT default 22)
+#   Variables: DEPLOY_REMOTE_DIR — absolute path on the server where docker compose lives (e.g. /home/ubuntu/Joshi-Meets)
+#   Variables: DEPLOY_COMPOSE_FILE — optional; e.g. docker-compose.small.yaml (if empty, uses default compose file)
+#   Variables: DEPLOY_SSH_PORT — optional SSH port (default 22)
+#   Variables: AUTO_DEPLOY_ON_IMAGE_PUSH — set to "true" to auto-deploy when "Release to DockerHub as Dev" finishes on main
+#
+# On the server: service name must be joshi-meets-api. For a 1GB VPS use docker-compose.small.yaml
+# (copy it to docker-compose.yml or set DEPLOY_COMPOSE_FILE).
+
+name: Deploy to server
+
+on:
+  workflow_dispatch:
+
+  workflow_run:
+    workflows:
+      - Release to DockerHub as Dev
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: SSH — pull image & restart API
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        vars.AUTO_DEPLOY_ON_IMAGE_PUSH == 'true'
+      )
+
+    steps:
+      - name: Check deploy configuration
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_REMOTE_DIR: ${{ vars.DEPLOY_REMOTE_DIR }}
+        run: |
+          missing=0
+          [ -z "$DEPLOY_HOST" ] && echo "::error::Secret DEPLOY_HOST is not set" && missing=1
+          [ -z "$DEPLOY_USER" ] && echo "::error::Secret DEPLOY_USER is not set" && missing=1
+          [ -z "$DEPLOY_SSH_KEY" ] && echo "::error::Secret DEPLOY_SSH_KEY is not set" && missing=1
+          [ -z "$DEPLOY_REMOTE_DIR" ] && echo "::error::Variable DEPLOY_REMOTE_DIR is not set (repo Settings → Variables)" && missing=1
+          exit $missing
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ vars.DEPLOY_SSH_PORT != '' && vars.DEPLOY_SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd "${{ vars.DEPLOY_REMOTE_DIR }}"
+            if [ -n "${{ vars.DEPLOY_COMPOSE_FILE }}" ]; then
+              docker compose -f "${{ vars.DEPLOY_COMPOSE_FILE }}" --env-file .env pull joshi-meets-api
+              docker compose -f "${{ vars.DEPLOY_COMPOSE_FILE }}" --env-file .env up -d --no-deps joshi-meets-api
+            else
+              docker compose --env-file .env pull joshi-meets-api
+              docker compose --env-file .env up -d --no-deps joshi-meets-api
+            fi
