@@ -1,0 +1,21 @@
+# Example for Cloudflare Tunnel (cloudflared) on the same host as docker-compose.small.yaml.
+#
+# 1. cloudflared tunnel create joshi-meets
+# 2. cloudflared tunnel route dns joshi-meets meet.joshi1.com
+# 3. cloudflared tunnel route dns joshi-meets nats.joshi1.com
+# 4. Copy this file to /etc/cloudflared/config.yml (or ~/.cloudflared/) and set:
+#    - tunnel: <uuid from tunnel create>
+#    - credentials-file: path to <uuid>.json
+# 5. Do NOT put LiveKit behind orange-cloud — see README "Cloudflare Tunnel".
+#
+tunnel: REPLACE_WITH_TUNNEL_UUID
+credentials-file: /etc/cloudflared/REPLACE_WITH_TUNNEL_UUID.json
+
+ingress:
+  # Joshi Meets API + static client (docker maps 8080 to 127.0.0.1)
+  - hostname: meet.joshi1.com
+    service: http://127.0.0.1:8080
+  # NATS WebSocket (browser clients)
+  - hostname: nats.joshi1.com
+    service: http://127.0.0.1:8222
+  - service: http_status:404

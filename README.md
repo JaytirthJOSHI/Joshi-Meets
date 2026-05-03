@@ -62,6 +62,28 @@ Use **Caddy** or **nginx** (or a cloud load balancer) with valid certificates:
 - Terminate HTTPS on `meet.joshi1.com` and proxy to this service on port `8080` (or your `client.port`).  
 - WebSocket upgrades must be enabled for NATS and LiveKit paths your deployment exposes.  
 
+### Cloudflare Tunnel (meet + NATS) and LiveKit (direct to VPS)
+
+**Cloudflare Tunnel** (`cloudflared`) is a good fit for **HTTPS + WebSocket** to:
+
+- **`meet.<yourdomain>`** → `http://127.0.0.1:8080` (Joshi Meets API + `client/dist`)
+- **`nats.<yourdomain>`** → `http://127.0.0.1:8222` (NATS browser WebSocket)
+
+Example ingress file: [etc/cloudflared-example/config.yml](./etc/cloudflared-example/config.yml). Create the tunnel in [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) → Networks → Tunnels, map the hostnames, install `cloudflared` on the VPS, and run `cloudflared tunnel run`.
+
+**LiveKit cannot sit behind the orange-cloud proxy** for real calls: WebRTC needs **UDP** (and direct media paths). Typical pattern:
+
+1. Add a **DNS-only** (**grey cloud**) **`A`** record: `livekit.<yourdomain>` → **`129.213.163.191`** (your VPS public IP).  
+2. In the cloud firewall / security list, allow **TCP `7880`–`7881`** and **UDP `7882`** (and any ports you use for LiveKit) to that IP.  
+3. Terminate **TLS** for `livekit.<yourdomain>` on the **VPS** (e.g. **Caddy** or nginx on `443` → `http://127.0.0.1:7880`), or enable TLS inside `livekit.yaml` per [LiveKit docs](https://docs.livekit.io/).  
+4. In `config.yaml` set:
+   - `client.bbb_join_host` → `https://meet.<yourdomain>`  
+   - `nats_info.nats_ws_urls` → `https://nats.<yourdomain>` (matches tunnel)  
+   - `livekit_info.host` → `https://livekit.<yourdomain>` (matches grey-cloud + TLS on origin)  
+   - `nats_info.nats_urls` stays `nats://nats:4222` inside Docker; `livekit_info` keys must match `livekit.yaml`.
+
+**Summary:** Tunnel = **meet** + **nats**. **LiveKit** = public IP + open media ports + TLS on the machine (not proxied through Cloudflare HTTP).
+
 ### 4. Client assets
 
 Either:
@@ -93,7 +115,7 @@ For **small rooms only**, use the trimmed stack (no Etherpad, no SIP, no RTMP in
 6. Add **swap** (about 2 GB) if the host has little free RAM.  
 7. Start: `docker compose -f docker-compose.small.yaml --env-file .env up -d`  
 
-Put a production build of [plugNmeet-client](https://github.com/mynaparrot/plugNmeet-client) in `client/dist/`. Terminate TLS on the host (Caddy/nginx) and proxy to `127.0.0.1:8080`.
+Put a production build of [plugNmeet-client](https://github.com/mynaparrot/plugNmeet-client) in `client/dist/`. For **Cloudflare Tunnel**, point `meet.<yourdomain>` at `127.0.0.1:8080` and see **Cloudflare Tunnel** above; otherwise use Caddy/nginx on the host.
 
 **Updates (no GitHub secrets, no auto-SSH):** on the VPS run `./scripts/deploy-pull.sh` — it `git pull`s this repo, pulls the latest API image from GHCR, and runs `docker compose up -d`.
 
