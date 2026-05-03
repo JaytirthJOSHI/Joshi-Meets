@@ -87,34 +87,21 @@ For **small rooms only**, use the trimmed stack (no Etherpad, no SIP, no RTMP in
 
 1. On the server: `git clone https://github.com/JaytirthJOSHI/Joshi-Meets.git && cd Joshi-Meets`  
 2. Run `./scripts/install-small-vps.sh`  
-3. Copy [env.small.example](./env.small.example) to `.env` and set `MYSQL_ROOT_PASSWORD` and `JOSHI_MEETS_IMAGE` (your Docker Hub username + `/joshi-meets-server:dev`).  
-4. Edit `config.yaml`: keep Redis/DB/NATS/LiveKit pointed at compose service names; set `shared_notepad.enabled: false` (Etherpad is not in the small compose).  
-5. Add **swap** (about 2 GB) if the host has little free RAM.  
-6. Start: `docker compose -f docker-compose.small.yaml --env-file .env up -d`  
+3. Copy [env.small.example](./env.small.example) to `.env` and set `MYSQL_ROOT_PASSWORD`. The default `JOSHI_MEETS_IMAGE` points at **GitHub Container Registry** for this repo (`ghcr.io/jaytirthjoshi/joshi-meets:dev`).  
+4. After the first successful **Actions** run on `main`, open **GitHub → Packages** → the `joshi-meets` container → **Package settings** → **Change package visibility** → **Public** so your VPS can `docker pull` without a login.  
+5. Edit `config.yaml`: keep Redis/DB/NATS/LiveKit pointed at compose service names; set `shared_notepad.enabled: false` (Etherpad is not in the small compose).  
+6. Add **swap** (about 2 GB) if the host has little free RAM.  
+7. Start: `docker compose -f docker-compose.small.yaml --env-file .env up -d`  
 
 Put a production build of [plugNmeet-client](https://github.com/mynaparrot/plugNmeet-client) in `client/dist/`. Terminate TLS on the host (Caddy/nginx) and proxy to `127.0.0.1:8080`.
 
-### 6. CI/CD and auto-deploy
+**Updates (no GitHub secrets, no auto-SSH):** on the VPS run `./scripts/deploy-pull.sh` — it `git pull`s this repo, pulls the latest API image from GHCR, and runs `docker compose up -d`.
 
-- **CI** ([.github/workflows/ci.yml](.github/workflows/ci.yml)): on every PR and `main` push — `go mod verify` and a Docker build (no push).  
-- **Docker Hub** ([.github/workflows/release-dev-dockerhub.yml](.github/workflows/release-dev-dockerhub.yml)): on every push to `main`, builds and pushes **`YOUR_DOCKERHUB/joshi-meets-server:dev`** and **`YOUR_DOCKERHUB/plugnmeet-server:dev`** (same digest). Configure secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_ACCESS_TOKEN`.  
-- **Deploy** ([.github/workflows/deploy.yml](.github/workflows/deploy.yml)): SSH into your VPS, `docker compose pull`, restart **only** `joshi-meets-api`.  
+### 6. CI and container image
 
-**GitHub repository settings**
-
-| Type | Name | Purpose |
-|------|------|---------|
-| Secret | `DOCKERHUB_USERNAME` | Docker Hub user |
-| Secret | `DOCKERHUB_ACCESS_TOKEN` | Docker Hub access token |
-| Secret | `DEPLOY_HOST` | VPS hostname or IP |
-| Secret | `DEPLOY_USER` | SSH user (e.g. `ubuntu`, `root`) |
-| Secret | `DEPLOY_SSH_KEY` | Private key for that user |
-| Variable | `DEPLOY_REMOTE_DIR` | Absolute path to the repo on the server (e.g. `/home/ubuntu/Joshi-Meets`) |
-| Variable | `DEPLOY_COMPOSE_FILE` | Optional: `docker-compose.small.yaml` if you did not rename it to `docker-compose.yml` |
-| Variable | `DEPLOY_SSH_PORT` | Optional SSH port (default `22`) |
-| Variable | `AUTO_DEPLOY_ON_IMAGE_PUSH` | Set to `true` to deploy automatically after each successful Docker Hub push on `main` |
-
-Run a deploy anytime: **Actions → Deploy to server → Run workflow**.
+- **CI** ([.github/workflows/ci.yml](.github/workflows/ci.yml)): on PRs and `main` — `go mod verify` and a Docker **build** (no registry push).  
+- **GHCR** ([.github/workflows/release-ghcr-dev.yml](.github/workflows/release-ghcr-dev.yml)): on every push to `main`, builds and pushes **`ghcr.io/jaytirthjoshi/joshi-meets:dev`** and **`:latest`** using **`GITHUB_TOKEN` only** — you do **not** add Docker Hub or deploy secrets.  
+- **Releases** ([.github/workflows/release-please.yml](.github/workflows/release-please.yml)): semver releases also push images to the same GHCR repository (when a release is created).
 
 ## Local development
 

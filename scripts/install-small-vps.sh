@@ -29,18 +29,19 @@ if [[ ! -f .env ]]; then
 # Strong password for MariaDB root (required)
 MYSQL_ROOT_PASSWORD=change-me-immediately
 
-# Image from Docker Hub after CI pushes main (see README)
-JOSHI_MEETS_IMAGE=YOUR_DOCKERHUB_USERNAME/joshi-meets-server:dev
+# GitHub Container Registry — same repo, lowercase (after first main build, set package to Public)
+JOSHI_MEETS_IMAGE=ghcr.io/jaytirthjoshi/joshi-meets:dev
 EOF
 fi
 
 echo ""
 echo "Next steps:"
-echo "  1. Edit .env (MYSQL_ROOT_PASSWORD, JOSHI_MEETS_IMAGE)"
+echo "  1. Edit .env (MYSQL_ROOT_PASSWORD). In GitHub: set GHCR package to Public for anonymous pull."
 echo "  2. Edit config.yaml — for 1GB VPS set shared_notepad.enabled: false (no Etherpad in small compose)"
 echo "  3. Align livekit.yaml keys with config.yaml livekit_info"
 echo "  4. Align nats_server.conf with config.yaml nats_info"
 echo "  5. Put plugNmeet-client build output in client/dist/"
 echo "  6. Add swap if needed: sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile"
 echo "  7. docker compose -f docker-compose.small.yaml --env-file .env up -d"
+echo "  Later updates: ./scripts/deploy-pull.sh"
 echo ""

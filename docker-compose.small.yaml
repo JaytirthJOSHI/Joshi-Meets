@@ -7,8 +7,8 @@
 #   3. Edit .env, config.yaml, livekit.yaml (keys), nats_server.conf (match config_sample NATS keys)
 #   4. docker compose -f docker-compose.small.yaml --env-file .env up -d
 #
-# GitHub Actions deploy expects this file to be copied as docker-compose.yml on the server
-# (or set COMPOSE_FILE in the deploy workflow — default below uses docker-compose.yml).
+# API image: GitHub Actions pushes to GHCR (no Docker Hub secrets). Default in env.small.example.
+# On the VPS after updates: ./scripts/deploy-pull.sh  (git pull + compose pull + up -d)
 
 services:
   redis:
